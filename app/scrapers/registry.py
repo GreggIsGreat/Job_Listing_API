@@ -5,39 +5,32 @@ logger = logging.getLogger(__name__)
 
 
 class ScraperRegistry:
-    """
-    Registry for managing multiple job scrapers.
-    """
+    """Registry for managing multiple job scrapers."""
     
+    _instance = None
     _scrapers: Dict = {}
     
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._scrapers = {}
+        return cls._instance
+    
     def register(self, scraper) -> None:
-        """
-        Register a new scraper.
-        """
         source_id = scraper.source_id
-        if source_id in self._scrapers:
-            logger.warning(f"Scraper {source_id} already registered, overwriting")
-        
         self._scrapers[source_id] = scraper
-        logger.info(f"Registered scraper: {source_id} ({scraper.source_name})")
+        logger.info(f"Registered scraper: {source_id}")
     
     def get(self, source_id: str):
-        """
-        Get a scraper by source ID.
-        """
         return self._scrapers.get(source_id)
     
     def get_all(self) -> Dict:
-        """Get all registered scrapers"""
         return self._scrapers.copy()
     
     def get_source_info(self) -> List:
-        """Get information about all registered sources"""
-        return [scraper.get_source_info() for scraper in self._scrapers.values()]
+        return [s.get_source_info() for s in self._scrapers.values()]
     
     def list_sources(self) -> List[str]:
-        """Get list of all registered source IDs"""
         return list(self._scrapers.keys())
 
 
