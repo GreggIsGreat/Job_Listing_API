@@ -15,23 +15,14 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["Jobs"])
 
 
-@router.get(
-    "/sources",
-    response_model=List[SourceInfo],
-    summary="List Available Sources"
-)
+@router.get("/sources", response_model=List[SourceInfo], summary="List Available Sources")
 def list_sources():
-    """Get all available job sources"""
     return scraper_registry.get_source_info()
 
 
 @router.get(
     "/jobs/botswana",
     response_model=JobListingsResponse,
-    responses={
-        200: {"description": "Successfully fetched job listings"},
-        500: {"model": ErrorResponse, "description": "Internal server error"},
-    },
     summary="Get Jobs from Jobs Botswana"
 )
 def get_jobs_botswana(
@@ -43,36 +34,25 @@ def get_jobs_botswana(
     """Fetch job listings from jobsbotswana.info"""
     try:
         logger.info(f"API Request: page={page}, category={category}, location={location}, job_type={job_type}")
-        
         result = jobs_botswana_scraper.scrape_listings(
             page=page,
             category=category,
             location=location,
             job_type=job_type
         )
-        
         logger.info(f"API Response: {len(result.data)} jobs returned")
         return result
-        
     except Exception as e:
         logger.error(f"Error fetching jobs: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get(
-    "/jobs/botswana/detail",
-    response_model=JobDetailResponse,
-    summary="Get Job Details"
-)
-def get_job_detail(
-    url: str = Query(..., description="Full URL of the job posting")
-):
-    """Fetch detailed information for a specific job posting."""
+@router.get("/jobs/botswana/detail", response_model=JobDetailResponse, summary="Get Job Details")
+def get_job_detail(url: str = Query(..., description="Full URL of the job posting")):
     try:
         job = jobs_botswana_scraper.scrape_job_detail(url)
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
-        
         return JobDetailResponse(
             success=True,
             message="Job details fetched successfully",
@@ -86,15 +66,8 @@ def get_job_detail(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get(
-    "/jobs/botswana/categories",
-    response_model=CategoriesResponse,
-    summary="Get Job Categories"
-)
-def get_categories(
-    refresh: bool = Query(False, description="Force refresh cache")
-):
-    """Get available job categories with counts."""
+@router.get("/jobs/botswana/categories", response_model=CategoriesResponse, summary="Get Job Categories")
+def get_categories(refresh: bool = Query(False, description="Force refresh cache")):
     try:
         categories, cached = jobs_botswana_scraper.get_categories(refresh)
         return CategoriesResponse(
@@ -110,15 +83,8 @@ def get_categories(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get(
-    "/jobs/botswana/locations",
-    response_model=LocationsResponse,
-    summary="Get Job Locations"
-)
-def get_locations(
-    refresh: bool = Query(False, description="Force refresh cache")
-):
-    """Get available job locations with counts."""
+@router.get("/jobs/botswana/locations", response_model=LocationsResponse, summary="Get Job Locations")
+def get_locations(refresh: bool = Query(False, description="Force refresh cache")):
     try:
         locations, cached = jobs_botswana_scraper.get_locations(refresh)
         return LocationsResponse(
@@ -134,13 +100,8 @@ def get_locations(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get(
-    "/jobs/botswana/job-types",
-    response_model=JobTypesResponse,
-    summary="Get Job Types"
-)
+@router.get("/jobs/botswana/job-types", response_model=JobTypesResponse, summary="Get Job Types")
 def get_job_types():
-    """Get available job types."""
     try:
         job_types = jobs_botswana_scraper.get_job_types()
         return JobTypesResponse(

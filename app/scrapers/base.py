@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List, Tuple
+import httpx
 from bs4 import BeautifulSoup
 import logging
 from datetime import datetime
@@ -8,18 +9,26 @@ from app.models.job import (
     JobListing, JobListingsResponse, JobCategory, 
     JobLocation, JobType, PaginationInfo, SourceInfo
 )
-from app.scrapers.browser import browser_manager
 
 logger = logging.getLogger(__name__)
 
 
 class BaseScraper(ABC):
-    """Abstract base class for all job scrapers using Selenium."""
+    """Abstract base class for all job scrapers."""
     
     def __init__(self):
+        self.headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
+            "Accept-Encoding": "gzip, deflate",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1",
+        }
+        self.timeout = 30.0
         self._categories_cache: Optional[Tuple[List[JobCategory], datetime]] = None
         self._locations_cache: Optional[Tuple[List[JobLocation], datetime]] = None
-        self._cache_ttl = 300  # 5 minutes
+        self._cache_ttl = 300
     
     @property
     @abstractmethod
@@ -54,52 +63,36 @@ class BaseScraper(ABC):
             is_active=True
         )
     
-    def fetch_page(self, url: str, wait_for_selector: str = None) -> Optional[BeautifulSoup]:
-        """
-        Fetch and parse a webpage using Selenium.
-        
-        Args:
-            url: URL to fetch
-            wait_for_selector: CSS selector to wait for before parsing
-            
-        Returns:
-            BeautifulSoup object or None on error
-        """
-        logger.info(f"Fetching URL with Selenium: {url}")
+    def fetch_page_sync(self, url: str) -> Optional[BeautifulSoup]:
+        """Fetch and parse a webpage using synchronous httpx."""
+        logger.info(f"Fetching URL: {url}")
         
         try:
-            with browser_manager.get_driver() as driver:
-                driver.get(url)
+            # Use synchronous client
+            with httpx.Client(timeout=self.timeout, follow_redirects=True) as client:
+                response = client.get(url, headers=self.headers)
+                response.raise_for_status()
                 
-                # Wait for specific element if provided
-                if wait_for_selector:
-                    from selenium.webdriver.common.by import By
-                    from selenium.webdriver.support.ui import WebDriverWait
-                    from selenium.webdriver.support import expected_conditions as EC
-                    
-                    WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, wait_for_selector))
-                    )
-                else:
-                    # Default wait for body
-                    from selenium.webdriver.common.by import By
-                    from selenium.webdriver.support.ui import WebDriverWait
-                    from selenium.webdriver.support import expected_conditions as EC
-                    
-                    WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.TAG_NAME, "body"))
-                    )
+                html_content = response.text
+                logger.info(f"Received {len(html_content)} bytes")
                 
-                # Get page source
-                html = driver.page_source
-                logger.info(f"Page fetched successfully, content length: {len(html)}")
+                # Try lxml first, fall back to html.parser
+                try:
+                    soup = BeautifulSoup(html_content, 'lxml')
+                except Exception:
+                    logger.warning("lxml failed, using html.parser")
+                    soup = BeautifulSoup(html_content, 'html.parser')
                 
-                # Parse with BeautifulSoup
-                soup = BeautifulSoup(html, 'html.parser')
                 return soup
                 
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error {e.response.status_code} for {url}")
+            raise
+        except httpx.RequestError as e:
+            logger.error(f"Request error for {url}: {str(e)}")
+            raise
         except Exception as e:
-            logger.error(f"Error fetching {url}: {str(e)}")
+            logger.error(f"Unexpected error fetching {url}: {str(e)}")
             raise
     
     @abstractmethod
