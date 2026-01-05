@@ -1,4 +1,3 @@
-# app/models/__init__.py
 from app.models.job import (
     JobListing,
     JobCategory,

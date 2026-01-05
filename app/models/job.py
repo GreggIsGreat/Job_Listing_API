@@ -1,78 +1,47 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List, Any
+from typing import Optional, List
 from datetime import datetime
-from enum import Enum
-
-
-class SourceType(str, Enum):
-    """Supported job source websites"""
-    JOBS_BOTSWANA = "jobsbotswana"
-    # Future sources can be added here
-    # CAREERS_BW = "careersbw"
-    # INDEED_BW = "indeedbw"
 
 
 class JobListing(BaseModel):
-    """Model representing a single job listing"""
-    id: Optional[str] = Field(None, description="Unique identifier for the job")
-    title: str = Field(..., description="Job title")
-    url: str = Field(..., description="Direct URL to the job posting")
-    company: Optional[str] = Field(None, description="Company name")
-    job_type: Optional[str] = Field(None, description="Type of employment")
-    location: Optional[str] = Field(None, description="Job location")
-    closing_date: Optional[str] = Field(None, description="Application closing date")
-    posted_date: Optional[str] = Field(None, description="Date the job was posted")
-    category: Optional[str] = Field(None, description="Job category")
-    posted_ago: Optional[str] = Field(None, description="Human-readable time since posting")
-    description: Optional[str] = Field(None, description="Job description excerpt")
-    is_closed: bool = Field(False, description="Whether the job posting is closed")
-    source: str = Field(..., description="Source website")
-    scraped_at: datetime = Field(default_factory=datetime.utcnow, description="When the job was scraped")
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "id": "98870",
-                "title": "GRADUATE PROGRAMME – Bryte Insurance Company Limited",
-                "url": "https://jobsbotswana.info/jobs/graduate-programme-bryte-insurance-company-limited/",
-                "company": "Bryte Insurance Company Limited",
-                "job_type": "Full Time",
-                "location": "Gaborone",
-                "closing_date": "January 10, 2026",
-                "category": "Graduate Programme",
-                "posted_ago": "4 days ago",
-                "is_closed": False,
-                "source": "jobsbotswana.info"
-            }
-        }
+    id: Optional[str] = None
+    title: str
+    url: str
+    company: Optional[str] = None
+    job_type: Optional[str] = None
+    location: Optional[str] = None
+    closing_date: Optional[str] = None
+    posted_date: Optional[str] = None
+    category: Optional[str] = None
+    posted_ago: Optional[str] = None
+    description: Optional[str] = None
+    is_closed: bool = False
+    source: str
+    scraped_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class JobCategory(BaseModel):
-    """Model representing a job category"""
-    slug: str = Field(..., description="URL-friendly category identifier")
-    name: str = Field(..., description="Display name of the category")
-    count: int = Field(0, description="Number of jobs in this category")
-    url: Optional[str] = Field(None, description="Direct URL to category listing")
+    slug: str
+    name: str
+    count: int = 0
+    url: Optional[str] = None
 
 
 class JobLocation(BaseModel):
-    """Model representing a job location"""
-    slug: str = Field(..., description="URL-friendly location identifier")
-    name: str = Field(..., description="Display name of the location")
-    count: int = Field(0, description="Number of jobs in this location")
-    description: Optional[str] = Field(None, description="Location description")
-    url: Optional[str] = Field(None, description="Direct URL to location listing")
+    slug: str
+    name: str
+    count: int = 0
+    description: Optional[str] = None
+    url: Optional[str] = None
 
 
 class JobType(BaseModel):
-    """Model representing a job type"""
-    slug: str = Field(..., description="URL-friendly job type identifier")
-    name: str = Field(..., description="Display name of the job type")
-    count: int = Field(0, description="Number of jobs of this type")
+    slug: str
+    name: str
+    count: int = 0
 
 
 class PaginationInfo(BaseModel):
-    """Pagination metadata"""
     current_page: int
     total_pages: int
     total_jobs: int
@@ -84,7 +53,6 @@ class PaginationInfo(BaseModel):
 
 
 class JobListingsResponse(BaseModel):
-    """Response model for job listings endpoint"""
     success: bool = True
     message: str = "Jobs fetched successfully"
     data: List[JobListing]
@@ -95,7 +63,6 @@ class JobListingsResponse(BaseModel):
 
 
 class JobDetailResponse(BaseModel):
-    """Response model for single job detail"""
     success: bool = True
     message: str = "Job details fetched successfully"
     data: JobListing
@@ -103,7 +70,6 @@ class JobDetailResponse(BaseModel):
 
 
 class CategoriesResponse(BaseModel):
-    """Response model for categories endpoint"""
     success: bool = True
     message: str = "Categories fetched successfully"
     data: List[JobCategory]
@@ -113,7 +79,6 @@ class CategoriesResponse(BaseModel):
 
 
 class LocationsResponse(BaseModel):
-    """Response model for locations endpoint"""
     success: bool = True
     message: str = "Locations fetched successfully"
     data: List[JobLocation]
@@ -123,7 +88,6 @@ class LocationsResponse(BaseModel):
 
 
 class JobTypesResponse(BaseModel):
-    """Response model for job types endpoint"""
     success: bool = True
     message: str = "Job types fetched successfully"
     data: List[JobType]
@@ -132,15 +96,12 @@ class JobTypesResponse(BaseModel):
 
 
 class ErrorResponse(BaseModel):
-    """Error response model"""
     success: bool = False
     message: str
     error_code: Optional[str] = None
-    details: Optional[dict] = None
 
 
 class SourceInfo(BaseModel):
-    """Information about a job source"""
     id: str
     name: str
     base_url: str

@@ -14,7 +14,6 @@ logger = logging.getLogger(__name__)
 
 
 class JobsBotswanaScraper(BaseScraper):
-    """Scraper for jobsbotswana.info"""
     
     @property
     def source_id(self) -> str:
@@ -32,35 +31,20 @@ class JobsBotswanaScraper(BaseScraper):
     def description(self) -> str:
         return "Leading job portal for employment opportunities in Botswana"
     
-    def _build_listing_url(
-        self, 
-        page: int = 1, 
-        category: Optional[str] = None, 
-        location: Optional[str] = None,
-        job_type: Optional[str] = None
-    ) -> str:
-        """Build the URL for job listings based on filters."""
+    def _build_listing_url(self, page: int = 1, category: Optional[str] = None,
+                          location: Optional[str] = None, job_type: Optional[str] = None) -> str:
         base = self.base_url
         
         if category and not location and not job_type:
-            if page == 1:
-                return f"{base}/job-category/{category}/"
-            return f"{base}/job-category/{category}/page/{page}/"
+            return f"{base}/job-category/{category}/" if page == 1 else f"{base}/job-category/{category}/page/{page}/"
         
         if location and not category and not job_type:
-            if page == 1:
-                return f"{base}/job-location/{location}/"
-            return f"{base}/job-location/{location}/page/{page}/"
+            return f"{base}/job-location/{location}/" if page == 1 else f"{base}/job-location/{location}/page/{page}/"
         
         if job_type and not category and not location:
-            if page == 1:
-                return f"{base}/job-type/{job_type}/"
-            return f"{base}/job-type/{job_type}/page/{page}/"
+            return f"{base}/job-type/{job_type}/" if page == 1 else f"{base}/job-type/{job_type}/page/{page}/"
         
-        if page == 1:
-            url = f"{base}/jobs/"
-        else:
-            url = f"{base}/jobs/page/{page}/"
+        url = f"{base}/jobs/" if page == 1 else f"{base}/jobs/page/{page}/"
         
         params = []
         if category:
@@ -76,7 +60,6 @@ class JobsBotswanaScraper(BaseScraper):
         return url
     
     def _parse_job_from_article(self, article: Tag) -> Optional[JobListing]:
-        """Parse a single job article element into a JobListing."""
         try:
             job_url = article.get('data-url', '')
             
@@ -101,7 +84,6 @@ class JobsBotswanaScraper(BaseScraper):
             if not title or not job_url:
                 return None
             
-            # Extract company
             company = None
             for sep in [' – ', ' - ', '–', '-']:
                 if sep in title:
@@ -117,7 +99,6 @@ class JobsBotswanaScraper(BaseScraper):
                         company = ' '.join(word.capitalize() for word in slug.split('-'))
                         break
             
-            # Get job type
             job_type = None
             job_type_span = article.find('span', class_='job-type')
             if job_type_span:
@@ -132,7 +113,6 @@ class JobsBotswanaScraper(BaseScraper):
                         job_type = ' '.join(word.capitalize() for word in slug.split('-'))
                         break
             
-            # Get location
             location = None
             location_span = article.find('span', class_='job-location')
             if location_span:
@@ -150,19 +130,16 @@ class JobsBotswanaScraper(BaseScraper):
                         location = cls.replace('job_location-', '').capitalize()
                         break
             
-            # Get closing date
             closing_date = None
             closing_span = article.find('span', class_='job-date__closing')
             if closing_span:
                 closing_date = closing_span.get_text(strip=True)
             
-            # Get posted date
             posted_date = None
             time_elem = article.find('time', class_='entry-date')
             if time_elem:
                 posted_date = time_elem.get('datetime')
             
-            # Get category
             category = None
             category_span = article.find('span', class_='job-category')
             if category_span:
@@ -179,13 +156,11 @@ class JobsBotswanaScraper(BaseScraper):
                 if categories_list:
                     category = ' - '.join(categories_list)
             
-            # Get posted ago
             posted_ago = None
             posted_ago_span = article.find('span', class_='job-date-ago')
             if posted_ago_span:
                 posted_ago = posted_ago_span.get_text(strip=True)
             
-            # Check if closed
             is_closed = 'closed-job' in [str(c) for c in classes]
             
             return JobListing(
@@ -208,7 +183,6 @@ class JobsBotswanaScraper(BaseScraper):
             return None
     
     def _parse_pagination(self, soup: BeautifulSoup, current_page: int) -> PaginationInfo:
-        """Parse pagination information from the page."""
         total_jobs = 0
         total_pages = 1
         jobs_per_page = 15
@@ -251,15 +225,9 @@ class JobsBotswanaScraper(BaseScraper):
             previous_page=current_page - 1 if has_previous else None
         )
     
-    def scrape_listings(
-        self, 
-        page: int = 1, 
-        category: Optional[str] = None,
-        location: Optional[str] = None,
-        job_type: Optional[str] = None,
-        keyword: Optional[str] = None
-    ) -> JobListingsResponse:
-        """Scrape job listings from jobsbotswana.info"""
+    def scrape_listings(self, page: int = 1, category: Optional[str] = None,
+                       location: Optional[str] = None, job_type: Optional[str] = None,
+                       keyword: Optional[str] = None) -> JobListingsResponse:
         
         url = self._build_listing_url(page, category, location, job_type)
         logger.info(f"Scraping jobs from: {url}")
@@ -274,10 +242,8 @@ class JobsBotswanaScraper(BaseScraper):
         
         try:
             soup = self.fetch_page_sync(url)
-            
             if soup is None:
                 raise Exception("Failed to parse page")
-                
         except Exception as e:
             logger.error(f"Failed to fetch page: {e}")
             return JobListingsResponse(
@@ -285,38 +251,23 @@ class JobsBotswanaScraper(BaseScraper):
                 message=f"Failed to fetch page: {str(e)}",
                 data=[],
                 pagination=PaginationInfo(
-                    current_page=page,
-                    total_pages=0,
-                    total_jobs=0,
-                    jobs_per_page=0,
-                    has_next=False,
-                    has_previous=False
+                    current_page=page, total_pages=0, total_jobs=0,
+                    jobs_per_page=0, has_next=False, has_previous=False
                 ),
                 filters_applied=filters_applied,
                 source=self.source_name
             )
         
-        # Debug: Log what we found
-        title_tag = soup.find('title')
-        logger.info(f"Page title: {title_tag.get_text() if title_tag else 'N/A'}")
-        
-        # Find all job articles
         articles = soup.find_all('article', class_='noo_job')
         logger.info(f"Found {len(articles)} job articles")
         
-        # Parse each article
         jobs: List[JobListing] = []
-        for i, article in enumerate(articles):
+        for article in articles:
             job = self._parse_job_from_article(article)
             if job:
                 jobs.append(job)
-                logger.debug(f"Parsed job {i+1}: {job.title}")
-            else:
-                logger.warning(f"Failed to parse article {i+1}")
         
         logger.info(f"Successfully parsed {len(jobs)} jobs")
-        
-        # Parse pagination
         pagination = self._parse_pagination(soup, page)
         
         return JobListingsResponse(
@@ -329,7 +280,6 @@ class JobsBotswanaScraper(BaseScraper):
         )
     
     def scrape_job_detail(self, job_url: str) -> Optional[JobListing]:
-        """Scrape detailed information for a single job."""
         logger.info(f"Fetching job details from: {job_url}")
         
         try:
@@ -377,13 +327,11 @@ class JobsBotswanaScraper(BaseScraper):
                 closing_date=closing_date,
                 source=self.source_name
             )
-            
         except Exception as e:
             logger.error(f"Error parsing job detail: {e}")
             return None
     
     def scrape_categories(self) -> List[JobCategory]:
-        """Scrape job categories from the sidebar."""
         try:
             soup = self.fetch_page_sync(f"{self.base_url}/jobs/")
             if soup is None:
@@ -393,7 +341,6 @@ class JobsBotswanaScraper(BaseScraper):
             return []
         
         categories = []
-        
         widget = soup.find('div', class_='noo-job-category-widget')
         if widget:
             ul = widget.find('ul', class_='job-categories')
@@ -403,28 +350,17 @@ class JobsBotswanaScraper(BaseScraper):
                     if link:
                         name = link.get_text(strip=True)
                         href = link.get('href', '')
-                        
                         slug_match = re.search(r'/job-category/([^/]+)/?', href)
                         slug = slug_match.group(1) if slug_match else name.lower().replace(' ', '-')
-                        
                         count = 0
-                        li_text = li.get_text()
-                        count_match = re.search(r'\((\d+)\)', li_text)
+                        count_match = re.search(r'\((\d+)\)', li.get_text())
                         if count_match:
                             count = int(count_match.group(1))
-                        
-                        categories.append(JobCategory(
-                            slug=slug,
-                            name=name,
-                            count=count,
-                            url=href
-                        ))
+                        categories.append(JobCategory(slug=slug, name=name, count=count, url=href))
         
-        logger.info(f"Found {len(categories)} categories")
         return categories
     
     def scrape_locations(self) -> List[JobLocation]:
-        """Scrape job locations from the sidebar."""
         try:
             soup = self.fetch_page_sync(f"{self.base_url}/jobs/")
             if soup is None:
@@ -434,7 +370,6 @@ class JobsBotswanaScraper(BaseScraper):
             return []
         
         locations = []
-        
         widget = soup.find('div', class_='noo-job-location-widget')
         if widget:
             ul = widget.find('ul')
@@ -445,30 +380,18 @@ class JobsBotswanaScraper(BaseScraper):
                         name = link.get_text(strip=True)
                         href = link.get('href', '')
                         description = link.get('title')
-                        
                         slug_match = re.search(r'/job-location/([^/]+)/?', href)
                         slug = slug_match.group(1) if slug_match else name.lower().replace(' ', '-')
-                        
                         count = 0
-                        li_text = li.get_text()
-                        count_match = re.search(r'\((\d+)\)', li_text)
+                        count_match = re.search(r'\((\d+)\)', li.get_text())
                         if count_match:
                             count = int(count_match.group(1))
-                        
-                        locations.append(JobLocation(
-                            slug=slug,
-                            name=name,
-                            count=count,
-                            description=description,
-                            url=href
-                        ))
+                        locations.append(JobLocation(slug=slug, name=name, count=count, description=description, url=href))
         
         locations.sort(key=lambda x: x.count, reverse=True)
-        logger.info(f"Found {len(locations)} locations")
         return locations
     
     def get_job_types(self) -> List[JobType]:
-        """Get available job types."""
         return [
             JobType(slug="full-time", name="Full Time", count=0),
             JobType(slug="contract", name="Contract", count=0),
@@ -476,5 +399,4 @@ class JobsBotswanaScraper(BaseScraper):
         ]
 
 
-# Create singleton instance
 jobs_botswana_scraper = JobsBotswanaScraper()

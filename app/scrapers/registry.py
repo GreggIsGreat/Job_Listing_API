@@ -5,8 +5,6 @@ logger = logging.getLogger(__name__)
 
 
 class ScraperRegistry:
-    """Registry for managing multiple job scrapers."""
-    
     _instance = None
     _scrapers: Dict = {}
     

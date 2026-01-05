@@ -14,8 +14,6 @@ logger = logging.getLogger(__name__)
 
 
 class BaseScraper(ABC):
-    """Abstract base class for all job scrapers."""
-    
     def __init__(self):
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -23,9 +21,8 @@ class BaseScraper(ABC):
             "Accept-Language": "en-US,en;q=0.5",
             "Accept-Encoding": "gzip, deflate",
             "Connection": "keep-alive",
-            "Upgrade-Insecure-Requests": "1",
         }
-        self.timeout = 30.0
+        self.timeout = 25.0  # Vercel has 30s limit
         self._categories_cache: Optional[Tuple[List[JobCategory], datetime]] = None
         self._locations_cache: Optional[Tuple[List[JobLocation], datetime]] = None
         self._cache_ttl = 300
@@ -64,11 +61,9 @@ class BaseScraper(ABC):
         )
     
     def fetch_page_sync(self, url: str) -> Optional[BeautifulSoup]:
-        """Fetch and parse a webpage using synchronous httpx."""
         logger.info(f"Fetching URL: {url}")
         
         try:
-            # Use synchronous client
             with httpx.Client(timeout=self.timeout, follow_redirects=True) as client:
                 response = client.get(url, headers=self.headers)
                 response.raise_for_status()
@@ -76,11 +71,9 @@ class BaseScraper(ABC):
                 html_content = response.text
                 logger.info(f"Received {len(html_content)} bytes")
                 
-                # Try lxml first, fall back to html.parser
                 try:
                     soup = BeautifulSoup(html_content, 'lxml')
                 except Exception:
-                    logger.warning("lxml failed, using html.parser")
                     soup = BeautifulSoup(html_content, 'html.parser')
                 
                 return soup
@@ -96,14 +89,9 @@ class BaseScraper(ABC):
             raise
     
     @abstractmethod
-    def scrape_listings(
-        self, 
-        page: int = 1, 
-        category: Optional[str] = None,
-        location: Optional[str] = None,
-        job_type: Optional[str] = None,
-        keyword: Optional[str] = None
-    ) -> JobListingsResponse:
+    def scrape_listings(self, page: int = 1, category: Optional[str] = None,
+                       location: Optional[str] = None, job_type: Optional[str] = None,
+                       keyword: Optional[str] = None) -> JobListingsResponse:
         pass
     
     @abstractmethod
@@ -133,7 +121,6 @@ class BaseScraper(ABC):
             categories, cache_time = self._categories_cache
             if self._is_cache_valid(cache_time):
                 return categories, True
-        
         categories = self.scrape_categories()
         self._categories_cache = (categories, datetime.utcnow())
         return categories, False
@@ -143,7 +130,6 @@ class BaseScraper(ABC):
             locations, cache_time = self._locations_cache
             if self._is_cache_valid(cache_time):
                 return locations, True
-        
         locations = self.scrape_locations()
         self._locations_cache = (locations, datetime.utcnow())
         return locations, False
