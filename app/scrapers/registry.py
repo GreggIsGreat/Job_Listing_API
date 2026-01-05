@@ -34,5 +34,4 @@ class ScraperRegistry:
         return list(self._scrapers.keys())
 
 
-# Global registry instance
 scraper_registry = ScraperRegistry()

@@ -20,7 +20,7 @@ router = APIRouter(prefix="/api/v1", tags=["Jobs"])
     response_model=List[SourceInfo],
     summary="List Available Sources"
 )
-async def list_sources():
+def list_sources():
     """Get all available job sources"""
     return scraper_registry.get_source_info()
 
@@ -34,7 +34,7 @@ async def list_sources():
     },
     summary="Get Jobs from Jobs Botswana"
 )
-async def get_jobs_botswana(
+def get_jobs_botswana(
     page: int = Query(1, ge=1, le=100, description="Page number"),
     category: Optional[str] = Query(None, description="Filter by job category slug"),
     location: Optional[str] = Query(None, description="Filter by location slug"),
@@ -42,15 +42,20 @@ async def get_jobs_botswana(
 ):
     """Fetch job listings from jobsbotswana.info"""
     try:
-        result = await jobs_botswana_scraper.scrape_listings(
+        logger.info(f"API Request: page={page}, category={category}, location={location}, job_type={job_type}")
+        
+        result = jobs_botswana_scraper.scrape_listings(
             page=page,
             category=category,
             location=location,
             job_type=job_type
         )
+        
+        logger.info(f"API Response: {len(result.data)} jobs returned")
         return result
+        
     except Exception as e:
-        logger.error(f"Error fetching jobs: {str(e)}")
+        logger.error(f"Error fetching jobs: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -59,12 +64,12 @@ async def get_jobs_botswana(
     response_model=JobDetailResponse,
     summary="Get Job Details"
 )
-async def get_job_detail(
+def get_job_detail(
     url: str = Query(..., description="Full URL of the job posting")
 ):
     """Fetch detailed information for a specific job posting."""
     try:
-        job = await jobs_botswana_scraper.scrape_job_detail(url)
+        job = jobs_botswana_scraper.scrape_job_detail(url)
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
         
@@ -86,12 +91,12 @@ async def get_job_detail(
     response_model=CategoriesResponse,
     summary="Get Job Categories"
 )
-async def get_categories(
+def get_categories(
     refresh: bool = Query(False, description="Force refresh cache")
 ):
     """Get available job categories with counts."""
     try:
-        categories, cached = await jobs_botswana_scraper.get_categories(refresh)
+        categories, cached = jobs_botswana_scraper.get_categories(refresh)
         return CategoriesResponse(
             success=True,
             message="Categories fetched successfully",
@@ -110,12 +115,12 @@ async def get_categories(
     response_model=LocationsResponse,
     summary="Get Job Locations"
 )
-async def get_locations(
+def get_locations(
     refresh: bool = Query(False, description="Force refresh cache")
 ):
     """Get available job locations with counts."""
     try:
-        locations, cached = await jobs_botswana_scraper.get_locations(refresh)
+        locations, cached = jobs_botswana_scraper.get_locations(refresh)
         return LocationsResponse(
             success=True,
             message="Locations fetched successfully",
@@ -134,10 +139,10 @@ async def get_locations(
     response_model=JobTypesResponse,
     summary="Get Job Types"
 )
-async def get_job_types():
+def get_job_types():
     """Get available job types."""
     try:
-        job_types = await jobs_botswana_scraper.get_job_types()
+        job_types = jobs_botswana_scraper.get_job_types()
         return JobTypesResponse(
             success=True,
             message="Job types fetched successfully",

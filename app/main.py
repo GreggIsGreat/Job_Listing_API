@@ -22,7 +22,6 @@ async def lifespan(app: FastAPI):
     """Application lifespan manager"""
     logger.info(f"Starting {settings.app_name} v{settings.app_version}")
     
-    # Import to register scrapers
     from app.scrapers import scraper_registry
     logger.info(f"Registered sources: {scraper_registry.list_sources()}")
     
@@ -33,7 +32,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title=settings.app_name,
-    description="API for fetching job listings from Botswana job websites",
+    description="API for fetching job listings from Botswana job websites using Selenium",
     version=settings.app_version,
     lifespan=lifespan,
     docs_url="/docs",
@@ -58,13 +57,12 @@ async def add_process_time_header(request: Request, call_next):
     return response
 
 
-# Import and include routers
 from app.routers import jobs
 app.include_router(jobs.router)
 
 
 @app.get("/", tags=["Root"])
-async def root():
+def root():
     """API root endpoint"""
     return {
         "name": settings.app_name,
@@ -79,7 +77,7 @@ async def root():
 
 
 @app.get("/health", tags=["Health"])
-async def health_check():
+def health_check():
     """Health check endpoint"""
     from app.scrapers import scraper_registry
     return {
@@ -90,8 +88,8 @@ async def health_check():
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    logger.error(f"Unhandled exception: {str(exc)}")
+    logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
     return JSONResponse(
         status_code=500,
-        content={"success": False, "message": "An unexpected error occurred"}
+        content={"success": False, "message": str(exc)}
     )
